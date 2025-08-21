@@ -1,0 +1,31 @@
+{
+  "discord_webhook": "https://discord.com/api/webhooks/1407930562509013132/a1IisUm6172AtbSoxWfiiNXPFvJrSsBh_OoFQXha8ASFh0xpGmeMM5VyoEhq4PbJH4Vc",
+  "monitoring_interval": 1,
+  "proxy": {
+    "enabled": true,
+    "http": "http://127.0.0.1:7890",
+    "https": "http://127.0.0.1:7890"
+  },
+  "feeds": [
+    {
+      "name": "aTyr Latest News Releases",
+      "url": "https://investors.atyrpharma.com/rss/news-releases.xml",
+      "enabled": true
+    },
+    {
+      "name": "aTyr Recent Events",
+      "url": "https://investors.atyrpharma.com/rss/events.xml",
+      "enabled": true
+    },
+    {
+      "name": "aTyr Latest SEC Filings",
+      "url": "https://investors.atyrpharma.com/rss/news-releases.xml",
+      "enabled": true
+    },
+    {
+      "name": "ClinicalTrials.gov - NCT02691257",
+      "url": "https://clinicaltrials.gov/api/rss?id=NCT02691247&dateField=LastUpdatePostDate",
+      "enabled": true
+    }
+  ]
+}
