@@ -230,7 +230,7 @@ class RSSMonitorService:
         PROXIES = config_manager.get_proxies()
     
     def log_fetch_status(self, feed_name: str, data_type: str, status: str, icon: str = "📡"):
-        """Log fetch status with proper alignment"""
+        """Log fetch status with proper alignment and timestamp"""
         # Calculate padding to align status messages
         max_feed_length = max(len(feed.name) for feed in self.feeds) if self.feeds else 10
         max_data_type_length = 20  # Approximate max length for data types
@@ -247,8 +247,11 @@ class RSSMonitorService:
             status_icon = "❌"
             status_text = f"FAILED  {status_icon}"
         
-        # Format the log message with better spacing
-        log_message = f"{icon} Fetching {padded_feed} {padded_data_type}... {status_text}"
+        # Get current timestamp with date and time
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Format the log message with timestamp and reduced spacing
+        log_message = f"[{current_time}] {icon} Fetching {padded_feed} {padded_data_type}... {status_text}"
         logger.info(log_message)
         
     def fetch_rss(self, feed: RSSFeed) -> Optional[feedparser.FeedParserDict]:
