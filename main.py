@@ -228,21 +228,43 @@ class RSSMonitorService:
         
         global PROXIES
         PROXIES = config_manager.get_proxies()
+    
+    def log_fetch_status(self, feed_name: str, data_type: str, status: str, icon: str = "📡"):
+        """Log fetch status with proper alignment"""
+        # Calculate padding to align status messages
+        max_feed_length = max(len(feed.name) for feed in self.feeds) if self.feeds else 10
+        max_data_type_length = 20  # Approximate max length for data types
+        
+        # Pad feed name and data type for alignment
+        padded_feed = feed_name.ljust(max_feed_length)
+        padded_data_type = data_type.ljust(max_data_type_length)
+        
+        # Choose status icon and format
+        if status == "SUCCESS":
+            status_icon = "✅"
+            status_text = f"SUCCESS {status_icon}"
+        else:
+            status_icon = "❌"
+            status_text = f"FAILED  {status_icon}"
+        
+        # Format the log message with better spacing
+        log_message = f"{icon} Fetching {padded_feed} {padded_data_type}... {status_text}"
+        logger.info(log_message)
         
     def fetch_rss(self, feed: RSSFeed) -> Optional[feedparser.FeedParserDict]:
         try:
             response = requests.get(feed.url, proxies=PROXIES, timeout=10)
             if response.status_code == 200:
-                logger.success(f"📡 Fetching {feed.name}... SUCCESS ✅")
+                self.log_fetch_status(feed.name, "RSS Feed", "SUCCESS")
                 return feedparser.parse(response.content)
             else:
-                logger.error(f"📡 Fetching {feed.name}... ❌ HTTP {response.status_code}")
+                self.log_fetch_status(feed.name, "RSS Feed", f"HTTP {response.status_code}")
                 return None
         except requests.exceptions.RequestException:
-            logger.error(f"📡 Fetching {feed.name}... ❌ Network error")
+            self.log_fetch_status(feed.name, "RSS Feed", "Network Error")
             return None
         except Exception:
-            logger.error(f"📡 Fetching {feed.name}... ❌ Fetch error")
+            self.log_fetch_status(feed.name, "RSS Feed", "Parse Error")
             return None
     
     def compare_and_update(self, feed: RSSFeed, rss_data: feedparser.FeedParserDict) -> Dict[str, List]:
@@ -263,7 +285,7 @@ class RSSMonitorService:
                     historical_item['link'] != current_item['link']):
                     
                     changes['updated_items'].append({'guid': guid, 'old': historical_item, 'new': current_item})
-                    logger.info(f"🔄 {feed.name}: {current_item['title']}")
+                    logger.info(f"🔄 {feed.name}: Updated - {current_item['title']}")
                     self.db_manager.save_item(feed.feed_id, guid, current_item['title'], 
                                            current_item['link'], current_item['description'], 
                                            current_item['published'], is_new=False)
@@ -274,7 +296,7 @@ class RSSMonitorService:
                                            current_item['published'], is_new=False)
             else:
                 changes['new_items'].append({'guid': guid, 'item': current_item})
-                logger.info(f"🆕 {feed.name}: {current_item['title']}")
+                logger.info(f"🆕 {feed.name}: New - {current_item['title']}")
                 self.db_manager.save_item(feed.feed_id, guid, current_item['title'], 
                                        current_item['link'], current_item['description'], 
                                        current_item['published'], is_new=True)
