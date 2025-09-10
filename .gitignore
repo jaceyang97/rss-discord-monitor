@@ -5,6 +5,9 @@ config.json
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Log files
 *.log
