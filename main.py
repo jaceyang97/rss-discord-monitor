@@ -34,7 +34,7 @@ class ConfigManager:
             return {}
     
     def validate_config(self, config: Dict) -> bool:
-        required_fields = ["discord_webhook", "monitoring_interval", "feeds"]
+        required_fields = ["discord_webhooks", "monitoring_interval", "feeds"]
         for field in required_fields:
             if field not in config:
                 logger.error(f"❌ Missing required config field: {field}")
@@ -48,6 +48,12 @@ class ConfigManager:
         if not enabled_feeds:
             logger.error("❌ No enabled feeds found")
             return False
+        
+        # Validate discord webhooks
+        if not config["discord_webhooks"] or not isinstance(config["discord_webhooks"], list):
+            logger.error("❌ discord_webhooks must be a non-empty list")
+            return False
+        
         return True
     
     def get_proxies(self) -> Dict:
@@ -58,8 +64,8 @@ class ConfigManager:
     def get_feeds(self) -> List[Dict]:
         return [feed for feed in self.config.get("feeds", []) if feed.get("enabled", True)]
     
-    def get_discord_webhook(self) -> str:
-        return self.config.get("discord_webhook", "")
+    def get_discord_webhooks(self) -> List[str]:
+        return self.config.get("discord_webhooks", [])
     
     def get_monitoring_interval(self) -> int:
         return self.config.get("monitoring_interval", 1)
@@ -162,11 +168,11 @@ class DatabaseManager:
             return {'total_items': 0}
 
 class DiscordWebhook:
-    def __init__(self, webhook_url: str):
-        self.webhook_url = webhook_url
+    def __init__(self, webhook_urls: List[str]):
+        self.webhook_urls = webhook_urls
         
     def send_notification(self, feed_name: str, items: List[Dict], change_type: str):
-        if not items:
+        if not items or not self.webhook_urls:
             return
         
         try:
@@ -194,13 +200,23 @@ class DiscordWebhook:
                 })
             
             payload = {"embeds": [embed], "username": "Monitor Bot"}
-            response = requests.post(self.webhook_url, json=payload, headers={"Content-Type": "application/json"}, 
-                                  proxies=PROXIES, timeout=10)
             
-            if response.status_code == 204:
-                logger.info(f"✅ Discord: {feed_name} - {change_type}")
-            else:
-                logger.warning(f"⚠️ Discord failed: {response.status_code}")
+            # Send to all webhooks
+            success_count = 0
+            for webhook_url in self.webhook_urls:
+                try:
+                    response = requests.post(webhook_url, json=payload, headers={"Content-Type": "application/json"}, 
+                                          proxies=PROXIES, timeout=10)
+                    
+                    if response.status_code == 204:
+                        success_count += 1
+                    else:
+                        logger.warning(f"⚠️ Discord webhook failed: {response.status_code}")
+                except Exception as e:
+                    logger.error(f"❌ Discord webhook error: {e}")
+            
+            if success_count > 0:
+                logger.info(f"✅ Discord: {feed_name} - {change_type} (sent to {success_count}/{len(self.webhook_urls)} webhooks)")
         except Exception as e:
             logger.error(f"❌ Discord error: {e}")
 
@@ -219,7 +235,7 @@ class RSSMonitorService:
     def __init__(self, config_manager: ConfigManager):
         self.config = config_manager
         self.db_manager = DatabaseManager()
-        self.discord = DiscordWebhook(config_manager.get_discord_webhook())
+        self.discord = DiscordWebhook(config_manager.get_discord_webhooks())
         
         self.feeds = []
         for feed_config in config_manager.get_feeds():
